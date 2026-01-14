@@ -1,72 +1,108 @@
-= Lab 0 
+= Lab 0
 
 note: zipped up libraries and imported to arduino
 
 
 = 2.5
-The LED doesn't blink at 0.5Hz because the time interval of 1000ms corresponds to 1Hz and the delay lines in moving forward and backward. 
+The LED doesn't blink at 0.5Hz because the time interval of 1000ms corresponds to 1Hz and the delay lines in moving forward and backward.
 
 delay(MOTOR_TIME_INTERVAL)
 
-we commented out the delay lines and changed the time interval to 2000ms. 
+we commented out the delay lines and changed the time interval to 2000ms.
 
-= 2.6 
-change to get light threshold later 
+= 2.6
+change to get light threshold later
 // identify light threshold
 void PrintLightThreshold(LIGHT_THRESHOLD){
   Serial.println(LIGHT_THRESHOLD)
 }
 
-// identify line threshold 
+// identify line threshold
 void PrintLineThreshold(LINE_THRESHOLD)){
   Serial.println(LINE_THRESHOLD)
 }
 
-LIGHT_THRESHOLD = 0  
-LINE_THRESHOLD = 0 
+LIGHT_THRESHOLD = 0
+LINE_THRESHOLD = 0
 
-= 2.8 
-function implementations 
+= 2.8
+function implementations
 
 
-= 2.9 
-simple test functions 
-//TODO: write these as functions 
+= 2.9
+simple test functions
 
-// turn motor on
-Raptor.LeftMtrSpeed(HALF_SPEED);
-Raptor.RightMtrSpeed(HALF_SPEED);
+void TurnMotorOn(){
+  Raptor.LeftMtrSpeed(HALF_SPEED);
+  Raptor.RightMtrSpeed(HALF_SPEED);
+  return;
+}
 
-// turn motor off
-Raptor.LeftMtrSpeed(0);
-Raptor.RightMtrSpeed(0);
+void TurnMotorOff(){
+  Raptor.LeftMtrSpeed(0);
+  Raptor.RightMtrSpeed(0);
+  return;
+}
 
-// get char from keyboard 
-Serial.read(); 
+char GetChar(){
+  return Serial.read();
+}
 
-// print value to serial monitor
-Serial.println("Hello World!");
+void PrintValue(){
+  Serial.println("Hello World!");
+  return;
+}
 
-// read light sensor 
-uint16_t light_sensor = Raptor.LightLevel();
+void ReadLightSensor(){
+  int16_t light_sensor = Raptor.LightLevel();
+  Serial.println(light_sensor);
+}
 
-// beep the buzzer 
-Raptor.Beep(260, 5000); // frequency(Hz), time(ms)
+void BeepBuzzer(){
+  Raptor.Beep(260, 5000);
+  return;
+}
 
-// turn on rgb led 
-Raptor.RGB(200, 100, 150); // R, G, B
+void TurnOnLed(){
+  Raptor.RGB(200, 100, 150); // R, G, B
+  return;
+}
 
-// test ir bumpers - bitwise tests? 
-uint8_t trigger_state = Raptor.ReadTriggers();
+// test ir bumpers
+void IsLeftLine(){
+  trigger_state = Raptor.ReadTriggers();
+  return (trigger_state & 0x01);
+}
+void IsLeftEdge(){
+  trigger_state = Raptor.ReadTriggers();
+  return (trigger_state & 0x02);
+}
+void IsCenterLine(){
+  trigger_state = Raptor.ReadTriggers();
+  return (trigger_state & 0x04);
+}
+void IsRightEdge(){
+  trigger_state = Raptor.ReadTriggers();
+  return (trigger_state & 0x08);
+}
+void IsRightLine(){
+  trigger_state = Raptor.ReadTriggers();
+  return (trigger_state & 0x10);
+}
 
-// masks 
 
-// and functions 
-uint8_t is_line_left = 
-uint8_t is_edge_left = 
-uint8_t is__line_center = 
-uint8_t is_edge_right = 
-uint8_t is_line_right = 
+hello
 
+= 3.1
+finite state diagram ------------------------
+
+
+pseudocode -----------------------
+
+
+
+
+
+final source code ----------------------------
 
 
