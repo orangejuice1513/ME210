@@ -53,8 +53,6 @@ void ResptToLightOff(void);
 uint8_t TestForFence(void);
 void RespToFence(void);
 
-
-
 //TODO: add ur functions here
 void PrintLightThreshold(void);
 void PrintLineThreshold(void);
