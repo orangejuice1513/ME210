@@ -21,8 +21,8 @@
 /*---------------Module Function Prototypes-----------------*/
 // void checkGlobalEvents(void);
 // void rotate(void);
-// void handleMoveForward(void);
-// void handleMoveBackward(void);
+void handleMoveForward(void);
+void handleMoveBackward(void);
 // unsigned char TestForKey(void);
 // void RespToKey(void);
 // unsigned char TestForLightOn(void);
@@ -34,9 +34,9 @@
 // unsigned char TestTimer0Expired(void);
 // void RespTimer0Expired(void);
 
-void handleMoveForward(void);
+void handleAdvance(void);
 void rotate(void);
-void handleMoveBackward(void);
+void handleRetreat(void);
 uint8_t TestLedTimerExpired(void);
 uint8_t TestRetreatTimerExpired(void);
 uint8_t TestRotateTimerExpired(void);
@@ -47,8 +47,8 @@ uint8_t TestForKey(void);
 void RespToKey(void);
 void checkGlobalEvents(void);
 uint8_t TestForLightOn(void);
-void RespToLightOnWhenLurking(void);
 uint8_t TestForLightOff(void);
+void ResptToLightOn(void);
 void ResptToLightOff(void);
 uint8_t TestForFence(void);
 void RespToFence(void);
@@ -102,24 +102,21 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("testing"); 
   checkGlobalEvents();
   switch (state) {
     case STATE_ROTATING: 
-
-    break;
+      rotate();
+      break;
     case STATE_ADVANCING: 
-
-    break;
+      handleAdvance(); 
+      break;
     case STATE_RETREAT: 
-
-    break; 
-    default: 
-    // default state is lurking 
-
-
-  } // end of switch state  
-} // end of loop 
+      handleRetreat(); 
+      break; 
+    default: //default state is lurking 
+      handleLurk(); 
+  }  
+} 
 
 // void loop() {
 //   checkGlobalEvents();
@@ -136,27 +133,45 @@ void loop() {
 // }
 
 /*----------------Module Functions--------------------------*/
+void handleMoveForward(void){
+  raptor.LeftMtrSpeed(HALF_SPEED); //move forwards 
+  raptor.RightMtrSpeed(HALF_SPEED);
+  //delay(MOTOR_TIME_INTERVAL);
+  state = STATE_MOVE_BACKWARD;
+}
 
-void handleMoveForward(void) {
-  state = STATE_ADVANCING;
-  raptor.LeftMtrSpeed(HALF_SPEED);
+void handleMoveBackward(void){
+  raptor.LeftMtrSpeed(-1*HALF_SPEED;  
+  raptor.RightMtrSpeed(-1*HALF_SPEED);
+  //delay(MOTOR_TIME_INTERVAL);
+  state = STATE_MOVE_FORWARD;
+}
+
+
+void handleAdvance(void) {
+  raptor.LeftMtrSpeed(HALF_SPEED); //move forwards 
   raptor.RightMtrSpeed(HALF_SPEED);
   //delay(MOTOR_TIME_INTERVAL);
   //state = STATE_MOVE_BACKWARD;
 }
 
 void rotate(void){
-  state = STATE_ROTATING;
+  rotateTimer.reset(); 
   raptor.LeftMtrSpeed(HALF_SPEED);
   raptor.RightMtrSpeed(0);
 }
 
-void handleMoveBackward(void) {
-  state = STATE_RETREATING;
-  raptor.LeftMtrSpeed(-25);
+void handleRetreat(void) {
+  retreatTimer.reset(); 
+  raptor.LeftMtrSpeed(-25); //robot doesn't back up in straight line 
   raptor.RightMtrSpeed(-1*HALF_SPEED);
   //delay(MOTOR_TIME_INTERVAL);
   //state = STATE_MOVE_FORWARD;
+}
+
+void handleLurk(void){
+  TurnMotorOff();
+  return;
 }
 
 uint8_t TestLedTimerExpired(void) {
@@ -173,7 +188,7 @@ uint8_t TestRotateTimerExpired(void) {
 
 void RespLedTimerExpired(void) {
   metTimer0.reset();
-  if (isLEDOn) {
+  if (isLEDOn) {     
     isLEDOn = false;
     raptor.RGB(RGB_OFF);
   } else {
@@ -185,19 +200,11 @@ void RespLedTimerExpired(void) {
 void RespRotateTimerExpired(void){
   // transition to advancing state 
   state = STATE_ADVANCING;
-  // move forward 
-  handleMoveForward(); 
 }
 
 void RespRetreatTimerExpired(void){
   // transition to rotating state
   state = STATE_ROTATING; 
-
-  // start rotating
-  rotate();
-
-  //start rotate timer 
-  rotateTimer.reset();
 }
 
 uint8_t TestForKey(void) {
@@ -217,15 +224,12 @@ void RespToKey(void) {
 void checkGlobalEvents(void) {
   if (TestLedTimerExpired()) RespLedTimerExpired();
   if (TestForKey()) RespToKey();
-
-  // change to switch cases like example 
   
   if(TestForLightOff()) RespToLightOff(); 
+  if(TestForLightOn()) RespToLightOn(); 
 
-  if(state == STATE_LURKING && TestForLightOn()) RespToLightOnWhenLurking();
-  if(state == STATE_ROTATING && TestRotateTimerExpired()) RespRotateTimerExpired();
-  if(state == STATE_RETREATING && TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
-
+  if(TestRotateTimerExpired()) RespRotateTimerExpired();
+  if(TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
   if(TestForFence()) RespToFence(); 
 }
 
@@ -235,22 +239,18 @@ uint8_t TestForLightOn(void) {
   return 0; 
 }
 
-void RespToLightOnWhenLurking(void) {
-  state = STATE_ROTATING;
-  rotateTimer.reset(); 
-  rotate(); 
-}
-
 //returns 1 if light is off 
 uint8_t TestForLightOff(void) {
   if (raptor.LightLevel() < LIGHT_THRESHOLD) return 1;
   return 0;
 }
 
+void RespToLightOn(void) {
+  state = STATE_ADVANCING; 
+  return;
+}
+
 void RespToLightOff(void) {
-  // stop attack = turn motors off 
-  TurnMotorOff(); 
-  // state is now lurking 
   state = STATE_LURKING;
   return; 
 }
@@ -262,11 +262,6 @@ uint8_t TestForFence(void) {
 }
 
 void RespToFence(void) {
-  // reset backward timer 
-    retreatTimer.reset();
-  // move backward 
-  handleMoveBackward();
-  // state is retreating
   state = STATE_RETREATING;
   return;
 }
@@ -349,6 +344,4 @@ void IsRightLine(void){
   Serial.println(trigger_state & 0x10);
   return;
 }
-
-
 
