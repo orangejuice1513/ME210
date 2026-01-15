@@ -97,7 +97,7 @@ void setup() {
   while(!Serial);
   Serial.println("Hello, world!");
   
-  state = STATE_LURKING;
+  state = STATE_ADVANCING;
   isLEDOn = false;
 }
 
@@ -110,7 +110,7 @@ void loop() {
     case STATE_ADVANCING: 
       handleAdvance(); 
       break;
-    case STATE_RETREAT: 
+    case STATE_RETREATING: 
       handleRetreat(); 
       break; 
     default: //default state is lurking 
@@ -141,7 +141,7 @@ void handleMoveForward(void){
 }
 
 void handleMoveBackward(void){
-  raptor.LeftMtrSpeed(-1*HALF_SPEED;  
+  raptor.LeftMtrSpeed(-1*HALF_SPEED);  
   raptor.RightMtrSpeed(-1*HALF_SPEED);
   //delay(MOTOR_TIME_INTERVAL);
   state = STATE_MOVE_FORWARD;
@@ -156,13 +156,12 @@ void handleAdvance(void) {
 }
 
 void rotate(void){
-  rotateTimer.reset(); 
   raptor.LeftMtrSpeed(HALF_SPEED);
   raptor.RightMtrSpeed(0);
 }
 
 void handleRetreat(void) {
-  retreatTimer.reset(); 
+  state = STATE_RETREATING;
   raptor.LeftMtrSpeed(-25); //robot doesn't back up in straight line 
   raptor.RightMtrSpeed(-1*HALF_SPEED);
   //delay(MOTOR_TIME_INTERVAL);
@@ -205,6 +204,7 @@ void RespRotateTimerExpired(void){
 void RespRetreatTimerExpired(void){
   // transition to rotating state
   state = STATE_ROTATING; 
+  rotateTimer.reset(); 
 }
 
 uint8_t TestForKey(void) {
@@ -226,10 +226,10 @@ void checkGlobalEvents(void) {
   if (TestForKey()) RespToKey();
   
   if(TestForLightOff()) RespToLightOff(); 
-  if(TestForLightOn()) RespToLightOn(); 
+  if(state == STATE_LURKING && TestForLightOn()) RespToLightOn(); 
 
-  if(TestRotateTimerExpired()) RespRotateTimerExpired();
-  if(TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
+  if(state == STATE_ROTATING && TestRotateTimerExpired()) RespRotateTimerExpired();
+  if(state == STATE_RETREATING && TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
   if(TestForFence()) RespToFence(); 
 }
 
@@ -263,6 +263,7 @@ uint8_t TestForFence(void) {
 
 void RespToFence(void) {
   state = STATE_RETREATING;
+  retreatTimer.reset();
   return;
 }
 
@@ -344,4 +345,3 @@ void IsRightLine(void){
   Serial.println(trigger_state & 0x10);
   return;
 }
-
