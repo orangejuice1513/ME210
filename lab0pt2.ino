@@ -10,7 +10,7 @@
                                     // (this will be smaller at night)
 #define LINE_THRESHOLD          350   // *Choose your own thresholds*
 
-#define LED_TIME_INTERVAL       2000 //ms 
+#define LED_TIME_INTERVAL       1000 //ms 
 #define MOTOR_TIME_INTERVAL     2000  
 #define ROTATE_TIME_INTERVAL    3000
 #define RETREAT_TIME_INTERVAL  3000
@@ -19,24 +19,12 @@
 
 #define TIMER_0            0
 /*---------------Module Function Prototypes-----------------*/
-// void checkGlobalEvents(void);
-// void rotate(void);
 void handleMoveForward(void);
 void handleMoveBackward(void);
-// unsigned char TestForKey(void);
-// void RespToKey(void);
-// unsigned char TestForLightOn(void);
-// void RespToLightOn(void);
-// unsigned char TestForLightOff(void);
-// void RespToLightOff(void);
-// unsigned char TestForFence(void);
-// void RespToFence(void);
-// unsigned char TestTimer0Expired(void);
-// void RespTimer0Expired(void);
-
 void handleAdvance(void);
 void rotate(void);
 void handleRetreat(void);
+void respMotorTimerExpired(void);
 uint8_t TestLedTimerExpired(void);
 uint8_t TestRetreatTimerExpired(void);
 uint8_t TestRotateTimerExpired(void);
@@ -53,7 +41,7 @@ void ResptToLightOff(void);
 uint8_t TestForFence(void);
 void RespToFence(void);
 
-//TODO: add ur functions here
+// Testing Functions 
 void PrintLightThreshold(void);
 void PrintLineThreshold(void);
 void TurnMotorOn(void);
@@ -80,6 +68,7 @@ States_t state;
 static Metro metTimer0 = Metro(LED_TIME_INTERVAL);
 static Metro retreatTimer = Metro(RETREAT_TIME_INTERVAL);
 static Metro rotateTimer = Metro(ROTATE_TIME_INTERVAL);
+static Metro motorTimer = Metro(MOTOR_TIME_INTERVAL); 
 uint8_t isLEDOn;
 
 /*---------------raptor Main Functions----------------*/
@@ -94,36 +83,56 @@ void setup() {
   Serial.begin(9600);
   while(!Serial);
   Serial.println("Hello, world!");
-  
-  state = STATE_ADVANCING;
+  // state = STATE_ADVANCING; 
+  state = STATE_MOVE_FORWARD;
+  motorTimer.reset();
   isLEDOn = false;
 }
 
-void loop() {
-  checkGlobalEvents();
-  switch (state) {
-    case STATE_ROTATING: 
-      rotate();
-      break;
-    case STATE_ADVANCING: 
-      handleAdvance(); 
-      break;
-    case STATE_RETREATING: 
-      handleRetreat(); 
-      break; 
-    default: //default state is lurking 
-      handleLurk(); 
-  }  
-} 
-
 // void loop() {
 //   checkGlobalEvents();
+//   switch (state) {
+//     case STATE_ROTATING: 
+//       rotate();
+//       break;
+//     case STATE_ADVANCING: 
+//       handleAdvance(); 
+//       break;
+//     case STATE_RETREATING: 
+//       handleRetreat(); 
+//       break; 
+//     default: //default state is lurking 
+//       handleLurk(); 
+//   }  
+// } 
+
+void loop() {
+  checkGlobalEvents();
+  static States_t last_state = STATE_MOVE_BACKWARD;
+  if (state != last_state) {
+    switch (state) {
+      case STATE_MOVE_FORWARD:
+        handleMoveForward();
+        break;
+      case STATE_MOVE_BACKWARD:
+        handleMoveBackward();
+        break;
+      default:
+        Serial.println("What is this I do not even...");
+        break;
+    }
+    last_state = state;
+  }
+}
+// void loop(){   
+//   if (motorTimer.check()) respMotorTimerExpired();
+//   checkGlobalEvents(); 
 //   switch (state) {
 //     case STATE_MOVE_FORWARD:
 //       handleMoveForward();
 //       break;
 //     case STATE_MOVE_BACKWARD:
-//       handleMoveBackward();
+//       handleMoveForward();
 //       break;
 //     default:    // Should never get into an unhandled state
 //       Serial.println("What is this I do not even...");
@@ -131,18 +140,52 @@ void loop() {
 // }
 
 /*----------------Module Functions--------------------------*/
+
+
+void checkGlobalEvents(void) {
+  if (motorTimer.check()) respMotorTimerExpired();
+
+  if (TestLedTimerExpired()) RespLedTimerExpired();
+  if (TestForKey()) RespToKey();
+  
+  // if(TestForLightOff()) RespToLightOff(); 
+  // if(state == STATE_LURKING && TestForLightOn()) RespToLightOn(); 
+
+  // if(state == STATE_ROTATING && TestRotateTimerExpired()) RespRotateTimerExpired();
+  // if(state == STATE_RETREATING && TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
+  // if(TestForFence()) RespToFence(); 
+}
+
+//returns 1 if light is on 
+uint8_t TestForLightOn(void) { 
+  if (raptor.LightLevel() >= LIGHT_THRESHOLD) return 1;
+  return 0; 
+}
+
 void handleMoveForward(void){
-  raptor.LeftMtrSpeed(HALF_SPEED); //move forwards 
-  raptor.RightMtrSpeed(HALF_SPEED);
-  //delay(MOTOR_TIME_INTERVAL);
-  state = STATE_MOVE_BACKWARD;
+    raptor.LeftMtrSpeed(HALF_SPEED); //move forwards 
+    raptor.RightMtrSpeed(HALF_SPEED);
+  return;
 }
 
 void handleMoveBackward(void){
   raptor.LeftMtrSpeed(-1*HALF_SPEED);  
   raptor.RightMtrSpeed(-1*HALF_SPEED);
-  //delay(MOTOR_TIME_INTERVAL);
-  state = STATE_MOVE_FORWARD;
+  return;
+}
+
+void respMotorTimerExpired(void){
+  //make the robot change states and then reset the timer 
+  motorTimer.reset(); 
+  if (state == STATE_MOVE_FORWARD){
+    state = STATE_MOVE_BACKWARD; 
+    handleMoveBackward();
+  }
+  else {
+    state = STATE_MOVE_FORWARD; 
+    handleMoveForward(); 
+  } 
+  return;
 }
 
 
@@ -156,6 +199,7 @@ void handleAdvance(void) {
 void rotate(void){
   raptor.LeftMtrSpeed(HALF_SPEED);
   raptor.RightMtrSpeed(0);
+  return;
 }
 
 void handleRetreat(void) {
@@ -217,24 +261,6 @@ void RespToKey(void) {
   Serial.print(theKey);
   Serial.print(", ASCII=");
   Serial.println(theKey, HEX);
-}
-
-void checkGlobalEvents(void) {
-  if (TestLedTimerExpired()) RespLedTimerExpired();
-  if (TestForKey()) RespToKey();
-  
-  if(TestForLightOff()) RespToLightOff(); 
-  if(state == STATE_LURKING && TestForLightOn()) RespToLightOn(); 
-
-  if(state == STATE_ROTATING && TestRotateTimerExpired()) RespRotateTimerExpired();
-  if(state == STATE_RETREATING && TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
-  if(TestForFence()) RespToFence(); 
-}
-
-//returns 1 if light is on 
-uint8_t TestForLightOn(void) { 
-  if (raptor.LightLevel() >= LIGHT_THRESHOLD) return 1;
-  return 0; 
 }
 
 //returns 1 if light is off 
@@ -343,3 +369,4 @@ void IsRightLine(void){
   Serial.println(trigger_state & 0x10);
   return;
 }
+
