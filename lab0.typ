@@ -8,7 +8,7 @@ Julia Jiang
 #set align(left)
 = Section 2 
 == 2.5 LED Blinking Frequency 
-The LED doesn't blink at 0.5Hz because the time interval of 1000ms corresponds to 1Hz and the delay lines in moving forward and backward. 
+The LED doesn't blink at 0.5Hz because the time interval of the delay lines in the moving forward and backward functions. While the delay allows the motors to run for some time, it also stops the light from blinking on time. To fix this, I added a timer that expires whenever it's time for the robot to switch from moving forward and backward so the light can blink at 0.5Hz without getting affected by the motor movement. 
 
 == 2.6 Identifying Light and Line Thresholds 
 LIGHT_THRESHOLD = 0 \
@@ -117,33 +117,133 @@ void IsRightLine(){
 #figure(image("image.png"))
 
 === Pseudocode
+```rs
+//INITIALIZATION/////////////////////////////////////
+initial state: lurking 
+//MUST ALWAYS CHECK EVENTS IN LOOP /////////////////
+checking global events: 
+  if light is on: keep advancing/retreating/rotating 
+  if light is off: motors off 
+  if rotate timer expires and we are rotating: start advancing
+  if retreat timer expires and we are retreating: start rotating 
+  if we hit a fence: retreat 
+//ACTIONS/////////////////////////////////////////
+advance: move forward, both motors have same speed 
+retreat: move backward but not in a straight line(motors at different nonzero speeds)
+rotate: one motor has speed 0 but the other has nonzero speed 
 
-
+//EVENTS/////////////////////////////////////////
+checking if light is on: light on if sensor > light threshold 
+checking if light is off: light off if sensor < light threshold 
+checking if we hit a fence: use helper function (read triggers from bottom sensors and compare to line threshold)
+rotate timer expires
+retreat timer expires 
+```
 === Final Source Code 
 
+```cpp
+#include <Raptor.h>
+#include <SPI.h>
+#include <Metro.h>
 
+/*---------------Module Defines-----------------------------*/
+
+#define LIGHT_THRESHOLD          50   // *Choose your own thresholds*
+                                    // (this will be smaller at night)
+#define LINE_THRESHOLD          350   // *Choose your own thresholds*
+
+#define LED_TIME_INTERVAL       2000 //ms 
+#define MOTOR_TIME_INTERVAL     2000  //time to move forward or backward 
+#define ROTATE_TIME_INTERVAL    3000 //time to rotate
+#define RETREAT_TIME_INTERVAL  3000 //time to retreat
+
+#define HALF_SPEED              50
+
+#define TIMER_0            0
+/*---------------Module Function Prototypes-----------------*/
+void handleAdvance(void);
+void rotate(void);
+void handleRetreat(void);
+uint8_t TestLedTimerExpired(void);
+uint8_t TestRetreatTimerExpired(void);
+uint8_t TestRotateTimerExpired(void);
+void RespLedTimerExpired(void);
+void RespRotateTimerExpired(void);
+void RespRetreatTimerExpired(void);
+uint8_t TestForKey(void);
+void RespToKey(void);
+void checkGlobalEvents(void);
+uint8_t TestForLightOn(void);
+uint8_t TestForLightOff(void);
+void ResptToLightOn(void);
+void ResptToLightOff(void);
+uint8_t TestForFence(void);
+void RespToFence(void);
+
+/*---------------State Definitions--------------------------*/
+typedef enum {
+  STATE_MOVE_FORWARD, STATE_MOVE_BACKWARD, STATE_LURKING, 
+  STATE_ADVANCING, STATE_RETREATING, STATE_ROTATING
+} States_t;
+
+/*---------------Module Variables---------------------------*/
+States_t state;
+static Metro metTimer0 = Metro(LED_TIME_INTERVAL);
+static Metro retreatTimer = Metro(RETREAT_TIME_INTERVAL);
+static Metro rotateTimer = Metro(ROTATE_TIME_INTERVAL);
+uint8_t isLEDOn;
+
+/*---------------raptor Main Functions----------------*/
+
+void setup() {
+  /* Open the serial port for communication using the Serial
+     C++ class. On the Leonardo, you must explicitly wait for
+   the class to report ready before commanding a println.
+  */
+  Serial.begin(9600);
+  while(!Serial);
+  Serial.println("Hello, world!");
+  
+  state = STATE_LURKING; //initial state is lurking  
+  isLEDOn = false;
+}
+
+void loop() {
+  checkGlobalEvents();
+  switch (state) {
+    case STATE_ROTATING: 
+      rotate();
+      break;
+    case STATE_ADVANCING: 
+      handleAdvance(); 
+      break;
+    case STATE_RETREATING: 
+      handleRetreat(); 
+      break; 
+    default: //default state is lurking 
+      handleLurk(); 
+  }  
+} 
+
+/*----------------Module Functions--------------------------*/
 void handleAdvance(void) {
   raptor.LeftMtrSpeed(HALF_SPEED); //move forwards 
   raptor.RightMtrSpeed(HALF_SPEED);
-  //delay(MOTOR_TIME_INTERVAL);
-  //state = STATE_MOVE_BACKWARD;
 }
 
 void rotate(void){
-  rotateTimer.reset(); 
   raptor.LeftMtrSpeed(HALF_SPEED);
   raptor.RightMtrSpeed(0);
 }
 
 void handleRetreat(void) {
-  retreatTimer.reset(); 
+  state = STATE_RETREATING;
   raptor.LeftMtrSpeed(-25); //robot doesn't back up in straight line 
   raptor.RightMtrSpeed(-1*HALF_SPEED);
-  //delay(MOTOR_TIME_INTERVAL);
-  //state = STATE_MOVE_FORWARD;
 }
 
 void handleLurk(void){
+  // when we're lurking, we don't want to move 
   TurnMotorOff();
   return;
 }
@@ -179,6 +279,7 @@ void RespRotateTimerExpired(void){
 void RespRetreatTimerExpired(void){
   // transition to rotating state
   state = STATE_ROTATING; 
+  rotateTimer.reset(); 
 }
 
 uint8_t TestForKey(void) {
@@ -196,25 +297,29 @@ void RespToKey(void) {
 }
 
 void checkGlobalEvents(void) {
+  //original code for led timer 
   if (TestLedTimerExpired()) RespLedTimerExpired();
   if (TestForKey()) RespToKey();
   
   if(TestForLightOff()) RespToLightOff(); 
-  if(TestForLightOn()) RespToLightOn(); 
+  // when light is on, only start advancing if already in lurking state
+  if(state == STATE_LURKING && TestForLightOn()) RespToLightOn(); 
 
-  if(TestRotateTimerExpired()) RespRotateTimerExpired();
-  if(TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
+  // only respond to timer expirations if we are in the state that the timer is for 
+  if(state == STATE_ROTATING && TestRotateTimerExpired()) RespRotateTimerExpired();
+  if(state == STATE_RETREATING && TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
+  
   if(TestForFence()) RespToFence(); 
 }
 
-//returns 1 if light is on 
 uint8_t TestForLightOn(void) { 
+  //returns 1 if light is on 
   if (raptor.LightLevel() >= LIGHT_THRESHOLD) return 1;
   return 0; 
 }
 
-//returns 1 if light is off 
 uint8_t TestForLightOff(void) {
+  //returns 1 if light is off 
   if (raptor.LightLevel() < LIGHT_THRESHOLD) return 1;
   return 0;
 }
@@ -229,15 +334,21 @@ void RespToLightOff(void) {
   return; 
 }
 
-//returns 1 if there is fence 
 uint8_t TestForFence(void) {
+  //returns 1 if there is fence 
   if (raptor.ReadTriggers(LINE_THRESHOLD)) return 1;
   return 0;
 }
 
 void RespToFence(void) {
   state = STATE_RETREATING;
+  retreatTimer.reset();
   return;
 }
 
-
+void TurnMotorOff(void){
+  raptor.LeftMtrSpeed(0);
+  raptor.RightMtrSpeed(0);
+  return; 
+}
+```
