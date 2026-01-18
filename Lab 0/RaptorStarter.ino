@@ -1,148 +1,6 @@
-
-#set text(size: 12pt)
-#set align(center)
-= ME210 Introduction to Mechatronics \ Lab 0\
-Winter 2026 \
-Julia Jiang 
-
-#set align(left)
-= Section 2 
-== 2.5 LED Blinking Frequency 
-The LED doesn't blink at 0.5Hz because the time interval of the delay lines in the moving forward and backward functions. While the delay allows the motors to run for some time, it also stops the light from blinking on time. To fix this, I added a timer that expires whenever it's time for the robot to switch from moving forward and backward so the light can blink at 0.5Hz without getting affected by the motor movement. 
-
-== 2.6 Identifying Light and Line Thresholds 
-LIGHT_THRESHOLD = 0 \
-LINE_THRESHOLD = 0
-```cpp
-void PrintLightThreshold(LIGHT_THRESHOLD){
-  //identify light threshold 
-  Serial.println(LIGHT_THRESHOLD)
-}
-void PrintLineThreshold(LINE_THRESHOLD)){
-  //identify line threshold 
-  Serial.println(LINE_THRESHOLD)
-}
-```
-
-== 2.7 Given Functions 
-```cpp
-uint8_t TestForLightOn(void) { 
-  //returns 1 if light is on 
-  if (raptor.LightLevel() >= LIGHT_THRESHOLD) return 1;
-  return 0; 
-}
-uint8_t TestForLightOff(void) {
-  //returns 1 if light is off 
-  if (raptor.LightLevel() < LIGHT_THRESHOLD) return 1;
-  return 0;
-}
-void RespToLightOn(void) {
-  state = STATE_ADVANCING; 
-  return;
-}
-void RespToLightOff(void) {
-  state = STATE_LURKING;
-  return; 
-}
-uint8_t TestForFence(void) {
-  //returns 1 if there is fence 
-  if (raptor.ReadTriggers(LINE_THRESHOLD)) return 1;
-  return 0;
-}
-void RespToFence(void) {
-  state = STATE_RETREATING;
-  return;
-}
-
-```
-
-
-== 2.8 Simple Testing Programs 
-```cpp
-void TurnMotorOn(){
-  Raptor.LeftMtrSpeed(HALF_SPEED);
-  Raptor.RightMtrSpeed(HALF_SPEED);
-  return;
-}
-void TurnMotorOff(){
-  Raptor.LeftMtrSpeed(0);
-  Raptor.RightMtrSpeed(0);
-  return;
-}
-char GetChar(){
-  return Serial.read();
-}
-void PrintValue(){
-  Serial.println("Hello World!");
-  return;
-}
-void ReadLightSensor(){
-  int16_t light_sensor = Raptor.LightLevel();
-  Serial.println(light_sensor);
-}
-void BeepBuzzer(){
-  Raptor.Beep(260, 5000);
-  return;
-}
-void TurnOnLed(){
-  Raptor.RGB(200, 100, 150); // R, G, B
-  return;
-}
-// test ir bumpers
-void IsLeftLine(){
-  trigger_state = Raptor.ReadTriggers();
-  return (trigger_state & 0x01);
-}
-void IsLeftEdge(){
-  trigger_state = Raptor.ReadTriggers();
-  return (trigger_state & 0x02);
-}
-void IsCenterLine(){
-  trigger_state = Raptor.ReadTriggers();
-  return (trigger_state & 0x04);
-}
-void IsRightEdge(){
-  trigger_state = Raptor.ReadTriggers();
-  return (trigger_state & 0x08);
-}
-void IsRightLine(){
-  trigger_state = Raptor.ReadTriggers();
-  return (trigger_state & 0x10);
-}
-```
-
-= Section 3 
-== 3.1
-=== Finite State Diagram 
-#figure(image("image.png"))
-
-=== Pseudocode
-```rs
-//INITIALIZATION/////////////////////////////////////
-initial state: lurking 
-//MUST ALWAYS CHECK EVENTS IN LOOP /////////////////
-checking global events: 
-  if light is on: keep advancing/retreating/rotating 
-  if light is off: motors off 
-  if rotate timer expires and we are rotating: start advancing
-  if retreat timer expires and we are retreating: start rotating 
-  if we hit a fence: retreat 
-//ACTIONS/////////////////////////////////////////
-advance: move forward, both motors have same speed 
-retreat: move backward but not in a straight line(motors at different nonzero speeds)
-rotate: one motor has speed 0 but the other has nonzero speed 
-
-//EVENTS/////////////////////////////////////////
-checking if light is on: light on if sensor > light threshold 
-checking if light is off: light off if sensor < light threshold 
-checking if we hit a fence: use helper function (read triggers from bottom sensors and compare to line threshold)
-rotate timer expires
-retreat timer expires 
-```
-=== Final Source Code 
-
-```cpp
 #include <Raptor.h>
+#include <SPI.h>
+
 #include <SPI.h>
 #include <Metro.h>
 
@@ -153,14 +11,16 @@ retreat timer expires
 #define LINE_THRESHOLD          350   // *Choose your own thresholds*
 
 #define LED_TIME_INTERVAL       2000 //ms 
-#define MOTOR_TIME_INTERVAL     2000  //time to move forward or backward 
-#define ROTATE_TIME_INTERVAL    3000 //time to rotate
-#define RETREAT_TIME_INTERVAL  3000 //time to retreat
+#define MOTOR_TIME_INTERVAL     2000  
+#define ROTATE_TIME_INTERVAL    3000
+#define RETREAT_TIME_INTERVAL  3000
 
 #define HALF_SPEED              50
 
 #define TIMER_0            0
 /*---------------Module Function Prototypes-----------------*/
+void handleMoveForward(void);
+void handleMoveBackward(void);
 void handleAdvance(void);
 void rotate(void);
 void handleRetreat(void);
@@ -180,6 +40,22 @@ void ResptToLightOff(void);
 uint8_t TestForFence(void);
 void RespToFence(void);
 
+//TODO: add ur functions here
+void PrintLightThreshold(void);
+void PrintLineThreshold(void);
+void TurnMotorOn(void);
+void TurnMotorOff(void);
+char GetChar(void);
+void PrintValue(void);
+void ReadLightSensor(void);
+void BeepBuzzer(void);
+void TurnOnLed(void);
+void IsLeftLine(void);
+void IsLeftEdge(void);
+void IsCenterLine(void);
+void IsRightEdge(void);
+void IsRightLine(void);
+
 /*---------------State Definitions--------------------------*/
 typedef enum {
   STATE_MOVE_FORWARD, STATE_MOVE_BACKWARD, STATE_LURKING, 
@@ -196,6 +72,8 @@ uint8_t isLEDOn;
 /*---------------raptor Main Functions----------------*/
 
 void setup() {
+  // put your setup code here, to run once:
+  
   /* Open the serial port for communication using the Serial
      C++ class. On the Leonardo, you must explicitly wait for
    the class to report ready before commanding a println.
@@ -204,7 +82,7 @@ void setup() {
   while(!Serial);
   Serial.println("Hello, world!");
   
-  state = STATE_LURKING; //initial state is lurking  
+  state = STATE_ADVANCING;
   isLEDOn = false;
 }
 
@@ -225,10 +103,41 @@ void loop() {
   }  
 } 
 
+// void loop() {
+//   checkGlobalEvents();
+//   switch (state) {
+//     case STATE_MOVE_FORWARD:
+//       handleMoveForward();
+//       break;
+//     case STATE_MOVE_BACKWARD:
+//       handleMoveBackward();
+//       break;
+//     default:    // Should never get into an unhandled state
+//       Serial.println("What is this I do not even...");
+//   }
+// }
+
 /*----------------Module Functions--------------------------*/
+void handleMoveForward(void){
+  raptor.LeftMtrSpeed(HALF_SPEED); //move forwards 
+  raptor.RightMtrSpeed(HALF_SPEED);
+  //delay(MOTOR_TIME_INTERVAL);
+  state = STATE_MOVE_BACKWARD;
+}
+
+void handleMoveBackward(void){
+  raptor.LeftMtrSpeed(-1*HALF_SPEED);  
+  raptor.RightMtrSpeed(-1*HALF_SPEED);
+  //delay(MOTOR_TIME_INTERVAL);
+  state = STATE_MOVE_FORWARD;
+}
+
+
 void handleAdvance(void) {
   raptor.LeftMtrSpeed(HALF_SPEED); //move forwards 
   raptor.RightMtrSpeed(HALF_SPEED);
+  //delay(MOTOR_TIME_INTERVAL);
+  //state = STATE_MOVE_BACKWARD;
 }
 
 void rotate(void){
@@ -240,10 +149,11 @@ void handleRetreat(void) {
   state = STATE_RETREATING;
   raptor.LeftMtrSpeed(-25); //robot doesn't back up in straight line 
   raptor.RightMtrSpeed(-1*HALF_SPEED);
+  //delay(MOTOR_TIME_INTERVAL);
+  //state = STATE_MOVE_FORWARD;
 }
 
 void handleLurk(void){
-  // when we're lurking, we don't want to move 
   TurnMotorOff();
   return;
 }
@@ -297,29 +207,25 @@ void RespToKey(void) {
 }
 
 void checkGlobalEvents(void) {
-  //original code for led timer 
   if (TestLedTimerExpired()) RespLedTimerExpired();
   if (TestForKey()) RespToKey();
   
   if(TestForLightOff()) RespToLightOff(); 
-  // when light is on, only start advancing if already in lurking state
   if(state == STATE_LURKING && TestForLightOn()) RespToLightOn(); 
 
-  // only respond to timer expirations if we are in the state that the timer is for 
   if(state == STATE_ROTATING && TestRotateTimerExpired()) RespRotateTimerExpired();
   if(state == STATE_RETREATING && TestRetreatTimerExpired()) RespRetreatTimerExpired(); 
-  
   if(TestForFence()) RespToFence(); 
 }
 
+//returns 1 if light is on 
 uint8_t TestForLightOn(void) { 
-  //returns 1 if light is on 
   if (raptor.LightLevel() >= LIGHT_THRESHOLD) return 1;
   return 0; 
 }
 
+//returns 1 if light is off 
 uint8_t TestForLightOff(void) {
-  //returns 1 if light is off 
   if (raptor.LightLevel() < LIGHT_THRESHOLD) return 1;
   return 0;
 }
@@ -334,8 +240,8 @@ void RespToLightOff(void) {
   return; 
 }
 
+//returns 1 if there is fence 
 uint8_t TestForFence(void) {
-  //returns 1 if there is fence 
   if (raptor.ReadTriggers(LINE_THRESHOLD)) return 1;
   return 0;
 }
@@ -346,9 +252,81 @@ void RespToFence(void) {
   return;
 }
 
+
+/***********Test Functions for Part II******************************************************/
+
+// identify light threshold
+void PrintLightThreshold(void) {
+  Serial.println(LIGHT_THRESHOLD);
+  return;
+}
+
+// identify line threshold 
+void PrintLineThreshold(void) {
+  Serial.println(LINE_THRESHOLD);
+  return;
+}
+
+void TurnMotorOn(void){
+  raptor.LeftMtrSpeed(HALF_SPEED);
+  raptor.RightMtrSpeed(HALF_SPEED);
+  return; 
+}
+
 void TurnMotorOff(void){
   raptor.LeftMtrSpeed(0);
   raptor.RightMtrSpeed(0);
   return; 
 }
-```
+
+char GetChar(void){
+  return Serial.read(); 
+}
+
+void PrintValue(void){
+  Serial.println("Hello World!");
+  return;
+}
+
+void ReadLightSensor(void){
+  int16_t light_sensor = raptor.LightLevel();
+  Serial.println(light_sensor);
+}
+
+
+void BeepBuzzer(void){
+  raptor.Beep(260, 5000);
+  return;
+}
+
+
+void TurnOnLed(void){
+  raptor.RGB(200, 100, 150); // R, G, B
+  return;
+}
+
+void IsLeftLine(void){
+   uint8_t trigger_state = raptor.ReadTriggers(LINE_THRESHOLD);
+  Serial.println(trigger_state & 0x01);
+  return;
+}
+void IsLeftEdge(void){
+   uint8_t trigger_state = raptor.ReadTriggers(LINE_THRESHOLD);
+  Serial.println(trigger_state & 0x02);
+  return;
+}
+void IsCenterLine(void){
+   uint8_t trigger_state = raptor.ReadTriggers(LINE_THRESHOLD);
+  Serial.println(trigger_state & 0x04);
+  return;
+}
+void IsRightEdge(void){
+   uint8_t trigger_state = raptor.ReadTriggers(LINE_THRESHOLD);
+  Serial.println(trigger_state & 0x08);
+  return;
+}
+void IsRightLine(void){
+   uint8_t trigger_state = raptor.ReadTriggers(LINE_THRESHOLD);
+  Serial.println(trigger_state & 0x10);
+  return;
+}
