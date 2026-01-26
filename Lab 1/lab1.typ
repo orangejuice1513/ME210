@@ -5,33 +5,29 @@ Winter 2026 \
 Julia Jiang 
 
 #set align(left)
-= Prelab 
-== 0.1)
-=== a. $220 Omega$
-=== b. $1k Omega$
-=== c. $47k Omega$ 
-=== d. $1M Omega$
+= Part 1: The Arduino as a Controllable Signal Source 
 
-== 0.2)
-=== a. $22 * 10^(3) "pF" = 22"nF"$
-=== b. $47 * 10^(6) "pF" = 47mu "F"$
-
-== 0.3)  
-
-== 0.4)
-```cpp 
-#include <SPI.h>
+== 1.2 (don't need to submit)
+```cpp
+pinMode(5,OUTPUT);
+digitalWrite(5,LOW); // writes to output 
 
 void setup(){
+  Serial.begin(9600);
 }
 
 void loop(){
-  delay(1000) //1000ms;
-  Serial.println("Hello, World!");
+  int voltage = analogRead(A0); //replace with whatever pin 
+  Serial.println(voltage);
 }
 ```
+== 1.3 
+We don't want a unity gain buffer for this signal because it has low output impedance and a current gain, and we don't want large currents going into the Arduino pins. 
+Limitation:   
 
-= Part 1: The Arduino as a Controllable Signal Source 
+== 1.5 
+
+== 1.6 
 
 = Part 2: The Phototransistor
 
