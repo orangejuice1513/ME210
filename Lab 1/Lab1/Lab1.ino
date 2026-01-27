@@ -131,44 +131,41 @@
 //     ITimer1.setFrequency(newFreq, TimerHandler);
 // }
 
-// // This only runs when the timer triggers!
-// void TimerHandler() {
-//     // digitalWrite(2, HIGH);
-//     //toggle the LED state here
-//     toggleState = !toggleState;
-//     digitalWrite(2, toggleState);
+// This only runs when the timer triggers!
+void TimerHandler() {
+    //toggle the LED state here
+    toggleState = !toggleState;
+    digitalWrite(2, toggleState);
+}
+
+// #include "TimerInterrupt.h"
+// #include "ISR_Timer.h"
+// #define OUTPUT_PIN 2
+// volatile bool toggleState = LOW;
+// long currentFreq = 12500;
+// int lastPot = -1;
+
+// void TimerHandler()
+// {
+//   toggleState = !toggleState;
+//   digitalWrite(OUTPUT_PIN, toggleState);
 // }
 
+// void setup()
+// {
+//   pinMode(OUTPUT_PIN, OUTPUT);
 
+//   ITimer1.init();
+//   ITimer1.setFrequency(currentFreq, TimerHandler);
+// }
 
-#include "TimerInterrupt.h"
-#include "ISR_Timer.h"
-#define OUTPUT_PIN 2
-volatile bool toggleState = LOW;
-long currentFreq = 12500;
-int lastPot = -1;
-
-void TimerHandler()
-{
-  toggleState = !toggleState;
-  digitalWrite(OUTPUT_PIN, toggleState);
-}
-
-void setup()
-{
-  pinMode(OUTPUT_PIN, OUTPUT);
-
-  ITimer1.init();
-  ITimer1.setFrequency(currentFreq, TimerHandler);
-}
-
-void loop(){
-    int potValue = analogRead(A0);
-    lastPot = potValue;
-    long newFreq = map(potValue, 0, 1023, 100, 25000); // ×2 for toggle
-    if (newFreq != currentFreq)
-    {
-        currentFreq = newFreq;
-        ITimer1.setFrequency(currentFreq, TimerHandler);
-    }
-}
+// void loop(){
+//     int potValue = analogRead(A0);
+//     lastPot = potValue;
+//     long newFreq = map(potValue, 0, 1023, 100, 25000); // ×2 for toggle
+//     if (newFreq != currentFreq)
+//     {
+//         currentFreq = newFreq;
+//         ITimer1.setFrequency(currentFreq, TimerHandler);
+//     }
+// }
