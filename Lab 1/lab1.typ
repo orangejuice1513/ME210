@@ -26,7 +26,45 @@ We don't want a unity gain buffer for this signal because it has low output impe
 Limitation:   
 
 == 1.5 
+```cpp
 
+volatile bool toggleState = false; // "volatile" because it's shared with ISR
+
+void setup() {
+    pinMode(LED_PIN, OUTPUT);
+    ITimer1.init();
+    
+    // Start with a default frequency
+    ITimer1.attachInterrupt(1250, TimerHandler);
+}
+
+void loop() {
+    // 1. Read the potentiometer
+    int potValue = analogRead(A0);
+
+    // 2. Map the 0-1023 pot value to your target frequency range (50Hz - 12500Hz)
+    // Note: map returns integers, so ensure your variables handle the math correctly
+    long newFreq = map(potValue, 0, 1023, 50, 12500);
+
+    // 3. Update the timer frequency
+    // The library function setFrequency allows you to update the rate
+    // dynamically without stopping/restarting the timer manually.
+    ITimer1.setFrequency(newFreq, TimerHandler);
+}
+
+// ---------------------------------------------------------
+// Interrupt Service Routine (ISR)
+// This only runs when the timer triggers!
+// ---------------------------------------------------------
+void TimerHandler() {
+    // Just toggle the LED state here
+    toggleState = !toggleState;
+    digitalWrite(LED_PIN, toggleState);
+}
+
+
+
+```
 == 1.6 
 
 = Part 2: The Phototransistor
