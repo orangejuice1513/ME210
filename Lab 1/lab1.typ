@@ -70,8 +70,20 @@ void TimerHandler() {
 = Part 2: The Phototransistor
 
 = Part 3: Op-Amps 
+== 3.1 
 
-= Part 4: Transresistive Amplifiers 
+== 3.3 
+
+== 3.4 Reversing Phototransistor Polarity 
+
+== 3.5 Measured vs. Calculated Gain
+
+== 3.6 Oscilloscope Settings  
+
+
+= Part 4: Transresistive Amplifiers
+
+
 
 = Part 5: Comparators 
 
