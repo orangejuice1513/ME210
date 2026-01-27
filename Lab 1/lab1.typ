@@ -30,21 +30,18 @@ Limitation:
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
-#define OUTPUT_PIN 2
 volatile bool toggleState = LOW;
 long currentFreq = 12500;
 int lastPot = -1;
 
-void TimerHandler()
-{
+void TimerHandler(){
+  //after timer expires 
   toggleState = !toggleState;
-  digitalWrite(OUTPUT_PIN, toggleState);
+  digitalWrite(2, toggleState);
 }
 
-void setup()
-{
-  pinMode(OUTPUT_PIN, OUTPUT);
-
+void setup(){
+  pinMode(2, OUTPUT);
   ITimer1.init();
   ITimer1.setFrequency(currentFreq, TimerHandler);
 }
@@ -53,8 +50,7 @@ void loop(){
     int potValue = analogRead(A0);
     lastPot = potValue;
     long newFreq = map(potValue, 0, 1023, 100, 25000); // ×2 for toggle
-    if (newFreq != currentFreq)
-    {
+    if (newFreq != currentFreq){
         currentFreq = newFreq;
         ITimer1.setFrequency(currentFreq, TimerHandler);
     }
@@ -65,16 +61,15 @@ void loop(){
 ```
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
-#define OUTPUT_PIN 2
 volatile bool toggleState = LOW;
 void TimerHandler(){
   toggleState = !toggleState;
-  digitalWrite(OUTPUT_PIN, toggleState);
+  digitalWrite(2, toggleState);
 }
 void setup(){
-  pinMode(OUTPUT_PIN, OUTPUT);
+  pinMode(2, OUTPUT);
   ITimer1.init();
-  ITimer1.setFrequency(2500, TimerHandler);
+  ITimer1.setFrequency(2500, TimerHandler); //1.25kHz * 2 
 }
 void loop(){
 }
