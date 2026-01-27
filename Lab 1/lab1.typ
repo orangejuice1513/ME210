@@ -28,41 +28,37 @@ Limitation:
 == 1.5 
 ```cpp
 
-volatile bool toggleState = false; // "volatile" because it's shared with ISR
+#include "TimerInterrupt.h"
+#include "ISR_Timer.h"
+#define OUTPUT_PIN 2
+volatile bool toggleState = LOW;
+long currentFreq = 12500;
+int lastPot = -1;
 
-void setup() {
-    pinMode(LED_PIN, OUTPUT);
-    ITimer1.init();
-    
-    // Start with a default frequency
-    ITimer1.attachInterrupt(1250, TimerHandler);
+void TimerHandler()
+{
+  toggleState = !toggleState;
+  digitalWrite(OUTPUT_PIN, toggleState);
 }
 
-void loop() {
-    // 1. Read the potentiometer
+void setup()
+{
+  pinMode(OUTPUT_PIN, OUTPUT);
+
+  ITimer1.init();
+  ITimer1.setFrequency(currentFreq, TimerHandler);
+}
+
+void loop(){
     int potValue = analogRead(A0);
-
-    // 2. Map the 0-1023 pot value to your target frequency range (50Hz - 12500Hz)
-    // Note: map returns integers, so ensure your variables handle the math correctly
-    long newFreq = map(potValue, 0, 1023, 50, 12500);
-
-    // 3. Update the timer frequency
-    // The library function setFrequency allows you to update the rate
-    // dynamically without stopping/restarting the timer manually.
-    ITimer1.setFrequency(newFreq, TimerHandler);
+    lastPot = potValue;
+    long newFreq = map(potValue, 0, 1023, 100, 25000); // ×2 for toggle
+    if (newFreq != currentFreq)
+    {
+        currentFreq = newFreq;
+        ITimer1.setFrequency(currentFreq, TimerHandler);
+    }
 }
-
-// ---------------------------------------------------------
-// Interrupt Service Routine (ISR)
-// This only runs when the timer triggers!
-// ---------------------------------------------------------
-void TimerHandler() {
-    // Just toggle the LED state here
-    toggleState = !toggleState;
-    digitalWrite(LED_PIN, toggleState);
-}
-
-
 
 ```
 == 1.6 
