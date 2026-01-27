@@ -62,7 +62,23 @@ void loop(){
 
 ```
 == 1.6 
-
+```
+#include "TimerInterrupt.h"
+#include "ISR_Timer.h"
+#define OUTPUT_PIN 2
+volatile bool toggleState = LOW;
+void TimerHandler(){
+  toggleState = !toggleState;
+  digitalWrite(OUTPUT_PIN, toggleState);
+}
+void setup(){
+  pinMode(OUTPUT_PIN, OUTPUT);
+  ITimer1.init();
+  ITimer1.setFrequency(2500, TimerHandler);
+}
+void loop(){
+}
+```
 = Part 2: The Phototransistor
 
 = Part 3: Op-Amps 
