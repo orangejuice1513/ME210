@@ -27,47 +27,76 @@ Limitation:
 
 == 1.5 
 ```cpp
+#define USE_TIMER_1   true 
+#define USE_TIMER_2   false 
 
-volatile bool toggleState = false; // "volatile" because it's shared with ISR
+#include "TimerInterrupt.h"
+#include "ISR_Timer.h"
+volatile bool toggleState = LOW;
+long currentFreq = 12500;
+int lastPot = -1;
 
-void setup() {
-    pinMode(LED_PIN, OUTPUT);
-    ITimer1.init();
-    
-    // Start with a default frequency
-    ITimer1.attachInterrupt(1250, TimerHandler);
+void TimerHandler(){
+  //after timer expires 
+  toggleState = !toggleState;
+  digitalWrite(2, toggleState);
+}
+void setup(){
+  pinMode(2, OUTPUT);
+  ITimer1.init();
+  ITimer1.setFrequency(currentFreq, TimerHandler);
 }
 
-void loop() {
-    // 1. Read the potentiometer
+void loop(){
     int potValue = analogRead(A0);
-
-    // 2. Map the 0-1023 pot value to your target frequency range (50Hz - 12500Hz)
-    // Note: map returns integers, so ensure your variables handle the math correctly
-    long newFreq = map(potValue, 0, 1023, 50, 12500);
-
-    // 3. Update the timer frequency
-    // The library function setFrequency allows you to update the rate
-    // dynamically without stopping/restarting the timer manually.
-    ITimer1.setFrequency(newFreq, TimerHandler);
+    lastPot = potValue;
+    long newFreq = map(potValue, 0, 1023, 100, 25000); // ×2 for toggle
+    if (newFreq != currentFreq){
+        currentFreq = newFreq;
+        ITimer1.setFrequency(currentFreq, TimerHandler);
+    }
 }
-
-// ---------------------------------------------------------
-// Interrupt Service Routine (ISR)
-// This only runs when the timer triggers!
-// ---------------------------------------------------------
-void TimerHandler() {
-    // Just toggle the LED state here
-    toggleState = !toggleState;
-    digitalWrite(LED_PIN, toggleState);
-}
-
-
 
 ```
 == 1.6 
+```cpp
+#define USE_TIMER_1   true 
+#define USE_TIMER_2   false 
 
+#include "TimerInterrupt.h"
+#include "ISR_Timer.h"
+volatile bool toggleState = LOW;
+void TimerHandler(){
+  toggleState = !toggleState;
+  digitalWrite(2, toggleState);
+}
+void setup(){
+  pinMode(2, OUTPUT);
+  ITimer1.init();
+  ITimer1.setFrequency(2500, TimerHandler); //1.25kHz * 2 
+}
+void loop(){
+}
+```
 = Part 2: The Phototransistor
+
+== 2.2 Sourcing Configuration 
+
+== 2.3 Sourcing Configuration Waveform 
+
+== 2.5 Sinking Configuration 
+
+== 2.6 Sinking Configuration Waveform 
+
+== 2.7 Difference between Sourcing and Sinking Waveforms
+The waveforms have different voltages because the resistors are in different places. In the sourcing configuration, the waveform measures voltage across the resistor directly but in the sinking configuration the voltage is measured at the node below the load resistor. Either way, the voltages across the resistors are about the same and the currents through the phototransistor are about the same, which makes sense because the current depends on the distance of the IR LED from the phototransistor. 
+== 2.9 10k /ohm 
+
+The 10k /ohm resistor forces V_o to hit the supply rails since the current through the phototransistor (around 0.7mA) wants to stay constant due to the constant IR LED emmission and the resistance is large. Thus, the the current is limited to an amount where V_o hits the supply rail. 
+
+== 2.11 100 /ohm
+
+The waveform is the same as with the 1k /ohm load resistor since V_o doesn't hit the supply rails and the same amount of current can pass through the phototransistor. 
 
 = Part 3: Op-Amps 
 == 3.1 
