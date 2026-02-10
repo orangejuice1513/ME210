@@ -125,7 +125,7 @@ V_CE being 2.5V is not ideal for the phototransistor because from the datasheet,
 The output of the amplifier at 1mW/cm#super[2] should be low and the output at 5mW/cm #super[2] should be high. 
 
 == 4.4 Op-Amp Output Waveform 
-#image("q4-4.png")
+#image("annotated.png")
 The output HI is only around half the voltage of the output HI in part 3. 
 We can make the signal amplitude larger by putting the IR LED closer to the phototransistor. 
 
