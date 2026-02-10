@@ -1,5 +1,6 @@
 // pwm.ino: uses a potentiometer to control a pwm duty cycle for a brushed dc motor
 // without motor driver 
+// pwm is 1024 resolution 
 
 #include "TimerInterrupt.h"
 #include "ISR_Timer.h"
@@ -29,7 +30,7 @@ void Timer2Handler();  // end of OFF time -> set HIGH
 volatile int counter = 0;           // counts falling edges for frequency
 volatile bool pwmState = HIGH;      // current PWM output state
 unsigned long curr_time = 0;        // for frequency measurement
-volatile uint16_t cur_duty_cycle = 0;   // 0–1023
+volatile uint16_t cur_duty_cycle = 0;   // 0–1023 (resolution)
 
 void setup(){
     Serial.begin(9600);
