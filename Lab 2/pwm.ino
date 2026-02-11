@@ -1,6 +1,12 @@
 // pwm.ino: uses a potentiometer to control a pwm duty cycle for a brushed dc motor
 // without motor driver 
 // pwm is 1024 resolution 
+// use 1 timer 
+// use interrupt and the function should be toggling the state 
+// 2 functions that attatch different interrupts to the same frequency 
+// those functions also call each other 
+// timers don't expire 
+
 #define USE_TIMER_1   true  
 
 #include "TimerInterrupt.h"
@@ -15,6 +21,7 @@
 
 #define FREQUENCY       490  //Hz
 #define PERIOD          2.0  //ms 
+
 /* prototypes */
 void stop_motor();
 bool is_serial();
@@ -23,10 +30,11 @@ void pull_high();
 void pull_low();  
 
 /* variable initialization */
-volatile int counter = 0;           // counts falling edges for frequency
-// volatile bool pwmState = HIGH;      // current PWM output state
+volatile bool pwmState = HIGH;      // current PWM output state
 unsigned long curr_time = 0;        // for frequency measurement
-volatile uint16_t cur_duty_cycle = 0.50;   // 0–1023 (resolution)
+volatile uint16_t cur_duty_cycle = 0.50;   // default is 50% duty cycle 
+volatile uint16_t on_duration = 1.0 //ms 
+volatile uint16_t off_duration = 1.0 //ms
 
 void setup(){
     Serial.begin(9600);
@@ -51,6 +59,8 @@ void loop(){
     volatile uint16_t new_duty_cycle = analogRead(INPUT_PIN) << 10; 
     if (new_duty_cycle != cur_duty_cycle){ 
         cur_duty_cycle = new_duty_cycle;
+        on_duration = cur_duty_cycle * PERIOD;
+        off_duration = PERIOD - on_duration;
     }
 
     // stops motor if a key is pressed 
@@ -61,11 +71,13 @@ void loop(){
 }
 
 void pull_high(){
+    // pulls the pwm pin to high 
     pwmState = HIGH;
     digitalWrite(OUTPUT_PIN_PWM, HIGH);
 }
 
 void pull_low(){
+    // pulls the pwm pin to low 
     pwmState = LOW;
     digitalWrite(OUTPUT_PIN_PWM, LOW);
 }
@@ -83,12 +95,3 @@ void clear_serial(){
     }
 }
 
-
-// use 1 timer 
-// use interrupt and the function should be toggling the state 
-// 2 functions that attatch different interrupts to the same frequency 
-// those functions also call each other 
-// timers don't expire 
-
-
-// how to stop the motor: disable timer 
