@@ -19,22 +19,21 @@
 #define OUTPUT_PIN_4    7
 #define OUTPUT_PIN_PWM  9
 
-#define FREQUENCY       490  //Hz
-#define PERIOD          2.0  //ms 
+#define FREQUENCY       490   //Hz
+#define PERIOD          2.04  //ms 
 
 /* prototypes */
 void stop_motor();
 bool is_serial();
 void clear_serial();
-void pull_high();
-void pull_low();  
+void isr();   
 
 /* variable initialization */
 volatile bool pwmState = HIGH;      // current PWM output state
 unsigned long curr_time = 0;        // for frequency measurement
-volatile uint16_t cur_duty_cycle = 0.50;   // default is 50% duty cycle 
-volatile uint16_t on_duration = 1.0 //ms 
-volatile uint16_t off_duration = 1.0 //ms
+volatile uint16_t cur_duty_cycle = 512;   // default is 50% duty cycle 
+volatile float on_duration = 1.0; //ms 
+volatile float off_duration = 1.0; //ms
 
 void setup(){
     Serial.begin(9600);
@@ -47,19 +46,16 @@ void setup(){
     pinMode(OUTPUT_PIN_PWM, OUTPUT);
 
     ITimer1.init();     // initialize timer
-
-    // interrupts at different times 
-    ITimer1.attachInterruptInterval(off_duration, pull_high()); // pull high after 1 - duty cycle 
-    ITimer1.attachInterruptInterval(on_duration, pull_low()); //pull low after duty cycle  
+    ITimer1.attachInterruptInterval(on_duration, isr); //pull low after duty cycle  
 }
 
 void loop(){
   
     //potentiometer logic 
-    volatile uint16_t new_duty_cycle = analogRead(INPUT_PIN) << 10; 
+    volatile uint16_t new_duty_cycle = analogRead(INPUT_PIN); 
     if (new_duty_cycle != cur_duty_cycle){ 
         cur_duty_cycle = new_duty_cycle;
-        on_duration = cur_duty_cycle * PERIOD;
+        on_duration = cur_duty_cycle * PERIOD / 1024;
         off_duration = PERIOD - on_duration;
     }
 
@@ -70,16 +66,19 @@ void loop(){
     }
 }
 
-void pull_high(){
-    // pulls the pwm pin to high 
-    pwmState = HIGH;
-    digitalWrite(OUTPUT_PIN_PWM, HIGH);
-}
-
-void pull_low(){
-    // pulls the pwm pin to low 
-    pwmState = LOW;
-    digitalWrite(OUTPUT_PIN_PWM, LOW);
+void isr(){
+    if(pwmState == HIGH){
+        // pulls the pwm pin to low 
+        pwmState = LOW;
+        digitalWrite(OUTPUT_PIN_PWM, LOW);    
+        ITimer1.attachInterruptInterval(off_duration, isr); // pull high after 1 - duty cycle     
+    }
+    else if(pwmState == LOW){
+        // pulls the pwm pin to high 
+        pwmState = HIGH;
+        digitalWrite(OUTPUT_PIN_PWM, HIGH);
+        ITimer1.attachInterruptInterval(on_duration, isr); //pull low after duty cycle  
+    }
 }
 
 bool is_serial(){
