@@ -2,17 +2,15 @@
 // source code for controlling the speed and direction of rottion of a 
 // dc brushless motor 
 
-#include "TimerInterrupt.h"
-#include "ISR_Timer.h"
-
 #define USE_TIMER_1   true  //on time 
 #define USE_TIMER_2   true //off time 
 
+#include "TimerInterrupt.h"
+#include "ISR_Timer.h"
+
 #define INPUT_PIN = A0;
-#define OUTPUT_PIN_1 = 4;
+#define OUTPUT_PIN_1 = 4; 
 #define OUTPUT_PIN_2 = 5;
-#define OUTPUT_PIN_3 = 6;
-#define OUTPUT_PIN_4 = 7;
 #define OUTPUT_PIN_PWM = 9;
 
 void setup(){
@@ -53,7 +51,7 @@ void TimerHandler(){
     digitalWrite(OUTPUT_PIN_PWM, toggleState);
   }
 
-  bool is_serial(){
+bool is_serial(){
     // returns true if the user types in something in the 
     // serial monitor 
     return Serial.available();
