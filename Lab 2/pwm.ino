@@ -46,7 +46,7 @@ void setup(){
     pinMode(OUTPUT_PIN_PWM, OUTPUT);
 
     ITimer1.init();     // initialize timer
-    ITimer1.attachInterruptInterval(on_duration, isr); //pull low after duty cycle  
+    ITimer1.attachInterruptInterval(on_duration, isr); //start with pwmState == HIGH   
 }
 
 void loop(){
@@ -71,13 +71,13 @@ void isr(){
         // pulls the pwm pin to low 
         pwmState = LOW;
         digitalWrite(OUTPUT_PIN_PWM, LOW);    
-        ITimer1.attachInterruptInterval(off_duration, isr); // pull high after 1 - duty cycle     
+        ITimer1.attachInterruptInterval(off_duration, isr); // wait off_duration then call isr again 
     }
     else if(pwmState == LOW){
         // pulls the pwm pin to high 
         pwmState = HIGH;
         digitalWrite(OUTPUT_PIN_PWM, HIGH);
-        ITimer1.attachInterruptInterval(on_duration, isr); //pull low after duty cycle  
+        ITimer1.attachInterruptInterval(on_duration, isr);   //wait on_duration then call isr again 
     }
 }
 
